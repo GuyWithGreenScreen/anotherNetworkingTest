@@ -1,5 +1,6 @@
 #ifndef MYNETWORKINGLIB
 #define MYNETWORKINGLIB
+#include <stdlib.h>
 #include <stddef.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -20,6 +21,7 @@ struct ServerOBJ {
 
 struct ClientCTX {
     unsigned char err;
+    struct ServerOBJ connections[8];
 };
 
 struct ClientOBJ {
@@ -30,23 +32,27 @@ struct ClientOBJ {
 
 // SERVER SIDE
 
-int check_server(struct ServerCTX *ctx);
+int mn_check_server(struct ServerCTX *ctx);
 
-int init_server(struct ServerCTX *ctx, const char *ip, const unsigned short port);
+int mn_init_server(struct ServerCTX *ctx, const char *ip, const unsigned short port);
 
-int start_server(struct ServerCTX *ctx, int backlog);
+int mn_start_server(struct ServerCTX *ctx, int backlog);
 
-int server_accept(struct ServerCTX *ctx, struct ClientOBJ *obj);
+int mn_server_accept(struct ServerCTX *ctx, struct ClientOBJ *obj);
 
-int server_send(struct ClientOBJ *obj, const unsigned char *dat, size_t dat_len);
+size_t mn_server_send(struct ClientOBJ *obj, const unsigned char *dat, size_t dat_len);
+
+size_t mn_server_recv(struct ClientOBJ *obj, unsigned char *buff, size_t n);
 
 
 // CLIENT SIDE
 
-int init_client(struct ClientCTX *ctx);
+int mn_init_client(struct ClientCTX *ctx);
 
-int init_server_obj(struct ServerOBJ *obj, const char *ip, const unsigned short port);
+int mn_init_server_obj(struct ServerOBJ *obj, const char *ip, const unsigned short port);
 
-int client_connect(struct ClientCTX *ctx, struct ServerOBJ *obj);
+int mn_client_connect(struct ClientCTX *ctx, struct ServerOBJ *obj);
+
+size_t mn_client_send(struct ServerOBJ *obj, const unsigned char *dat, size_t dat_len);
 
 #endif
