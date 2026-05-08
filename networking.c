@@ -1,5 +1,4 @@
 #include "networking.h"
-#include <linux/in.h>
 #include <stdio.h>
 #include <sys/socket.h>
 
