@@ -40,7 +40,7 @@ struct ClientOBJ {
 
 int mn_check_server(struct ServerCTX *ctx);
 
-int mn_init_server(struct ServerCTX *ctx, const char *ip, const unsigned short port);
+int mn_init_server(struct ServerCTX *ctx, const struct IPPORT_RAW *listen_addr);
 
 int mn_start_server(struct ServerCTX *ctx, int backlog);
 
@@ -53,9 +53,9 @@ size_t mn_server_recv(struct ClientOBJ *obj, unsigned char *buff, size_t n);
 
 // CLIENT SIDE
 
-int mn_init_client(struct ClientCTX *ctx, const char *ip );
+int mn_init_client(struct ClientCTX *ctx, const struct IPPORT_RAW *listen_addr);
 
-int mn_init_server_obj(struct ServerOBJ *obj, const char *ip, const unsigned short port);
+int mn_init_server_obj(struct ServerOBJ *obj, const struct IPPORT_RAW *server_addr);
 
 int mn_client_connect(struct ClientCTX *ctx, struct ServerOBJ *obj);
 
