@@ -9,29 +9,29 @@
 #include <string.h>
 #include <unistd.h>
 
-struct IPPORT_RAW {
+struct mn_IPPORT_RAW {
     char *ip;
     unsigned short port;
 };
 
-struct ServerCTX {
+struct mn_ServerCTX {
     unsigned char err;
     int sockfd;
     struct sockaddr_in server_addr;
 };
 
-struct ServerOBJ {
+struct mn_ServerOBJ {
     unsigned char err;
     int sockfd;
     struct sockaddr_in server_addr;
 };
 
-struct ClientCTX {
+struct mn_ClientCTX {
     unsigned char err;
-    struct ServerOBJ connection;
+    struct mn_ServerOBJ connection;
 };
 
-struct ClientOBJ {
+struct mn_ClientOBJ {
     unsigned char err;
     int sock;
     struct sockaddr_in addr;
@@ -39,35 +39,35 @@ struct ClientOBJ {
 
 // SERVER SIDE
 
-int mn_init_server(struct ServerCTX *ctx, const struct IPPORT_RAW *listen_addr);
+int mn_init_server(struct mn_ServerCTX *ctx, const struct mn_IPPORT_RAW *listen_addr);
 
-int mn_start_server(struct ServerCTX *ctx, int backlog);
+int mn_start_server(struct mn_ServerCTX *ctx, int backlog);
 
-int mn_server_accept(struct ServerCTX *ctx, struct ClientOBJ *obj);
+int mn_server_accept(struct mn_ServerCTX *ctx, struct mn_ClientOBJ *obj);
 
-size_t mn_server_send(struct ClientOBJ *obj, const unsigned char *dat, size_t dat_len);
+size_t mn_server_send(struct mn_ClientOBJ *obj, const unsigned char *dat, size_t dat_len);
 
-size_t mn_server_recv(struct ClientOBJ *obj, unsigned char *buff, size_t n);
+size_t mn_server_recv(struct mn_ClientOBJ *obj, unsigned char *buff, size_t n);
 
-int mn_server_close(struct ServerCTX *ctx);
+int mn_server_close(struct mn_ServerCTX *ctx);
 
-int mn_server_close_client(struct ClientOBJ *obj);
+int mn_server_close_client(struct mn_ClientOBJ *obj);
 
 
 // CLIENT SIDE
 
-int mn_init_client(struct ClientCTX *ctx);
+int mn_init_client(struct mn_ClientCTX *ctx);
 
-int mn_init_server_obj(struct ServerOBJ *obj, const struct IPPORT_RAW *server_addr);
+int mn_init_server_obj(struct mn_ServerOBJ *obj, const struct mn_IPPORT_RAW *server_addr);
 
-int mn_client_bind_server(struct ClientCTX *ctx, struct ServerOBJ *obj);
+int mn_client_bind_server(struct mn_ClientCTX *ctx, struct mn_ServerOBJ *obj);
 
-int mn_client_connect(struct ClientCTX *ctx);
+int mn_client_connect(struct mn_ClientCTX *ctx);
 
-size_t mn_client_send(struct ClientCTX *ctx, const unsigned char *dat, size_t dat_len);
+size_t mn_client_send(struct mn_ClientCTX *ctx, const unsigned char *dat, size_t dat_len);
 
-size_t mn_client_recv(struct ClientCTX *ctx, unsigned char *buff, size_t n);
+size_t mn_client_recv(struct mn_ClientCTX *ctx, unsigned char *buff, size_t n);
 
-int mn_client_close(struct ClientCTX *ctx);
+int mn_client_close(struct mn_ClientCTX *ctx);
 
 #endif
