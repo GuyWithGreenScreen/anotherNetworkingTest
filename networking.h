@@ -15,16 +15,17 @@
 #define mn_data_block_size_limit 16000
 #define mn_data_block_count_limit 256
 
-#define mn_mem_init(amount) void *mn_mem_list[amount] = {0}
-#define mn_mem_add(ptr)     {for (int mn_i = 0; mn_i < sizeof(mn_mem_list)/8; mn_i++) {if (!mn_mem_list[mn_i]) mn_mem_list[mn_i] = ptr;}}
-#define mn_mem_free()       {for (int mn_i = 0; mn_i < sizeof(mn_mem_list)/8; mn_i++) {free(mn_mem_list[mn_i]);}}
-#define mn_mem_err_free(X)       {for (int mn_i = 0; mn_i < sizeof(mn_mem_list)/8; mn_i++) {free(mn_mem_list[mn_i]);} mn_err_ret(X)}
-#define mn_mem_ERR_free(X)       {for (int mn_i = 0; mn_i < sizeof(mn_mem_list)/8; mn_i++) {free(mn_mem_list[mn_i]);} mn_ERR_ret(X)}
 
 #define mn_func mn_func_name
 #define mn_func_set char *mn_func = 
 #define mn_err_ret(X) {printf("%s: %s\n", mn_func, X); return 1;}
 #define mn_ERR_ret(X) {printf("%s: %s\n", mn_func, X); perror("Error:"); return 1;}
+
+#define mn_mem_init(amount) void *mn_mem_list[amount] = {0}
+#define mn_mem_add(ptr)     {for (int mn_i = 0; mn_i < sizeof(mn_mem_list)/8; mn_i++) {if (!mn_mem_list[mn_i]) mn_mem_list[mn_i] = ptr;}}
+#define mn_mem_free()       {for (int mn_i = 0; mn_i < sizeof(mn_mem_list)/8; mn_i++) {free(mn_mem_list[mn_i]);}}
+#define mn_mem_err_free(X)  {mn_mem_free(); mn_err_ret(X);}
+#define mn_mem_ERR_free(X)  {mn_mem_free(); mn_ERR_ret(X);}
 
 #define mn_byte unsigned char
 
@@ -39,35 +40,35 @@ typedef struct mn_data_block {
     uint8_t sign;
     uint16_t len;
     void *dat;
-} mn_db;
+} mn_data_block, mn_db, mnDB;
 
-struct mn_IPPORT_RAW {
+typedef struct mn_IPPORT_RAW {
     char *ip;
     unsigned short port;
-};
+} mn_IPPORT_RAW, mn_IPPR, mnIPPR, mn_IP;
 
-struct mn_ServerCTX {
+typedef struct mn_ServerCTX {
     unsigned char err;
     int sockfd;
     struct sockaddr_in server_addr;
-};
+} mn_ServerCTX, mn_SCTX, mnSCTX, mn_SC;
 
-struct mn_ServerOBJ {
+typedef struct mn_ServerOBJ {
     unsigned char err;
     int sockfd;
     struct sockaddr_in server_addr;
-};
+} mn_ServerOBJ, mn_SOBJ, mnSOBJ, mn_SO;
 
-struct mn_ClientCTX {
+typedef struct mn_ClientCTX {
     unsigned char err;
     struct mn_ServerOBJ connection;
-};
+} mn_ClientCTX, mn_CCTX, mnCCTX, mn_CC;
 
-struct mn_ClientOBJ {
+typedef struct mn_ClientOBJ {
     unsigned char err;
     int sock;
     struct sockaddr_in addr;
-};
+} mn_ClientOBJ, mn_COBJ, mnCOBJ, mn_CO;
 
 // SERVER SIDE
 

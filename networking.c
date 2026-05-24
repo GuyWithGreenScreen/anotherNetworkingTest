@@ -1,20 +1,14 @@
 #include "networking.h"
-#include <netinet/in.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <unistd.h>
 
 int mn_init_server(struct mn_ServerCTX *ctx, const struct mn_IPPORT_RAW *listen_addr) {
+
+    mn_func_set             "mn_init_server";
 
     ctx->err = 0;
 
     int sockfd              = socket(AF_INET, SOCK_STREAM, 0);
 
-    if (sockfd < 0)         {perror("init_server: socket creation fail"); ctx->err = 1; return 1;}
+    if (sockfd < 0)         {ctx->err = 1; mn_ERR_ret("Socket Creation Fail")}
 
     ctx->sockfd                         = sockfd;
     ctx->server_addr.sin_family         = AF_INET;
@@ -23,14 +17,16 @@ int mn_init_server(struct mn_ServerCTX *ctx, const struct mn_IPPORT_RAW *listen_
 
     int binded              = bind(sockfd, (struct sockaddr*)&ctx->server_addr, sizeof(struct sockaddr_in));
 
-    if (binded == -1)       {perror("init_server: bind error"); ctx->err = 1; return 1;}
+    if (binded == -1)       {ctx->err = 1; mn_ERR_ret("Bind Error");}
 
     return 0;
 }
 
 int mn_start_server(struct mn_ServerCTX *ctx, int backlog) {
 
-    if (ctx->err)   return 1;
+    mn_func_set             "mn_start_server";
+
+    if (ctx->err)           mn_err_ret("Server Context has error flag");
 
     listen(ctx->sockfd, backlog);
 
@@ -39,7 +35,9 @@ int mn_start_server(struct mn_ServerCTX *ctx, int backlog) {
 
 int mn_server_accept(struct mn_ServerCTX *ctx, struct mn_ClientOBJ *obj) {
 
-    if (ctx->err)  return 1;
+    mn_func_set             "mn_server_accept";
+
+    if (ctx->err)           mn_err_ret("Server Context has error flag");
 
     obj->err                = 0;
     
@@ -51,7 +49,7 @@ int mn_server_accept(struct mn_ServerCTX *ctx, struct mn_ClientOBJ *obj) {
 
     new_sock                = accept(ctx->sockfd, (struct sockaddr *)&obj->addr, &addr_size);
 
-    if (new_sock < 0)       {perror("server_accept: accept fail"); return 1;}
+    if (new_sock < 0)       mn_ERR_ret("Accept fail");
 
     obj->sock               = new_sock;
 
@@ -61,7 +59,9 @@ int mn_server_accept(struct mn_ServerCTX *ctx, struct mn_ClientOBJ *obj) {
 
 size_t mn_server_send(struct mn_ClientOBJ *obj, const unsigned char *dat, size_t dat_len) {
 
-    if (obj->err) return 1;
+    mn_func_set             "mn_server_send";
+
+    if (obj->err)           mn_err_ret("Client Object has error flag");
 
     return send(obj->sock, dat, dat_len, 0);
 
@@ -206,15 +206,15 @@ int mn_server_send_db(struct mn_ClientOBJ *obj, const struct mn_data_block *bloc
 
 int mn_server_recv_exact(struct mn_ClientOBJ *obj, unsigned char *buff, size_t n) {
 
-    mn_func_set         "mn_server_recv_exact";
+    mn_func_set                     "mn_server_recv_exact";
 
-    size_t bytes_read   = 0;
+    size_t bytes_read               = 0;
 
     while (bytes_read < n) {
         int r = recv(obj->sock, buff + bytes_read, n - bytes_read, 0); 
-        if (r == 0) mn_err_ret("Connection Closed");
-        if (r < 0)  mn_ERR_ret("Recv Error");
-        bytes_read += r;
+        if (r == 0)                 mn_err_ret("Connection Closed");
+        if (r < 0)                  mn_ERR_ret("Recv Error");
+        bytes_read                  += r;
     }
 
 
@@ -342,7 +342,9 @@ int mn_server_recv_db(struct mn_ClientOBJ *obj, struct mn_data_block **blocks, v
 
 size_t mn_server_recv(struct mn_ClientOBJ *obj, unsigned char *buff, size_t n) {
 
-    if (obj->err) return 1;
+    mn_func_set                     "mc_server_recv";
+
+    if (obj->err)                   mn_err_ret("Client Object has error flag");
 
     return recv(obj->sock, buff, n, 0);
 
@@ -362,8 +364,7 @@ int mn_server_close_client(struct mn_ClientOBJ *obj) {
 
     int cls;
 
-    if ((cls = close(obj->sock))) 
-                                        obj->err = 1;
+    if ((cls = close(obj->sock)))   obj->err = 1;
 
     obj->sock = -1;
 
@@ -397,11 +398,13 @@ int mn_init_server_obj(struct mn_ServerOBJ *obj, const struct mn_IPPORT_RAW *ser
 
 int mn_client_bind_server(struct mn_ClientCTX *ctx, struct mn_ServerOBJ *obj) {
 
-    if (ctx->err)                       return 1;
+    mn_func_set                         "mn_client_bind_server";
+
+    if (ctx->err)                       mn_err_ret("Client Context has error flag");
     
     int sockfd                          = socket(AF_INET, SOCK_STREAM, 0);
 
-    if (sockfd < 0)                     {perror("init_server: socket creation fail"); obj->err = 1; return 1;}
+    if (sockfd < 0)                     {obj->err = 1; mn_ERR_ret("Socket Creation fail")}
 
     obj->sockfd                         = sockfd;
 
@@ -413,10 +416,12 @@ int mn_client_bind_server(struct mn_ClientCTX *ctx, struct mn_ServerOBJ *obj) {
 
 int mn_client_connect(struct mn_ClientCTX *ctx) {
 
-    if (ctx->err)                       return 1;
+    mn_func_set                         "mn_client_connect";
+
+    if (ctx->err)                       mn_err_ret("Client Context has error flag");
 
     if (connect(ctx->connection.sockfd, (struct sockaddr*)&ctx->connection.server_addr, sizeof(struct sockaddr_in)))
-            {perror("client_connect: connection fail"); ctx->err = 1; return 1;}
+                                        {ctx->err = 1; mn_ERR_ret("Connection Fail");}
 
     return 0;
 
@@ -424,7 +429,9 @@ int mn_client_connect(struct mn_ClientCTX *ctx) {
 
 size_t mn_client_send(struct mn_ClientCTX *ctx, const unsigned char *dat, size_t dat_len) {
 
-    if (ctx->err)                       return 1;
+    mn_func_set                         "mn_client_send";
+
+    if (ctx->err)                       mn_err_ret("Client Context has error flag");
     
     return send(ctx->connection.sockfd, dat, dat_len, 0);
 
@@ -703,7 +710,9 @@ int mn_client_recv_db(struct mn_ClientCTX *ctx, struct mn_data_block **blocks, v
 
 size_t mn_client_recv(struct mn_ClientCTX *ctx, unsigned char *buff, size_t n) {
 
-    if (ctx->err)                       return 1;
+    mn_func_set                         "mn_client_recv";
+
+    if (ctx->err)                       mn_err_ret("Client Context has error flag");
     
     return recv(ctx->connection.sockfd, buff, n, 0);
 
