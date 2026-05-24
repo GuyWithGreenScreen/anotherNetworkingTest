@@ -84,7 +84,8 @@ int mn_server_send_db(struct mn_ClientOBJ *obj, const struct mn_data_block *bloc
 
 int mn_server_recv_exact(struct mn_ClientOBJ *obj, unsigned char *buff, size_t n);
 
-int mn_server_recv_db(struct mn_ClientOBJ *obj, struct mn_data_block **blocks, void **block_data, size_t *block_amount);
+int mn_server_recv_db(struct mn_ClientOBJ *obj, struct mn_data_block **blocks, size_t *recv_block_count,
+                      size_t max_blocks, size_t max_size);
 
 size_t mn_server_recv(struct mn_ClientOBJ *obj, unsigned char *buff, size_t n);
 
@@ -109,7 +110,8 @@ int mn_client_send_db(struct mn_ClientCTX *ctx, const struct mn_data_block *bloc
 
 int mn_client_recv_exact(struct mn_ClientCTX *ctx, unsigned char *buff, size_t n);
 
-int mn_client_recv_db(struct mn_ClientCTX *ctx, struct mn_data_block **blocks, void **block_data, size_t *block_amount);
+int mn_client_recv_db(struct mn_ClientCTX *ctx, struct mn_data_block **blocks, size_t *recv_block_count,
+                      size_t max_blocks, size_t max_size);
 
 size_t mn_client_recv(struct mn_ClientCTX *ctx, unsigned char *buff, size_t n);
 

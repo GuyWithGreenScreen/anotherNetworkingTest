@@ -79,7 +79,7 @@ int mn_server_send_db(struct mn_ClientOBJ *obj, const struct mn_data_block *bloc
     for (int i = 0; i < blocks_len; i++) {
 
         struct mn_data_block block 
-                                = blocks[i];
+= blocks[i];
 
         if (block.dat == NULL)  mn_err_ret("Block Data Ptr NULL");
 
@@ -222,15 +222,22 @@ int mn_server_recv_exact(struct mn_ClientOBJ *obj, unsigned char *buff, size_t n
 }
 
 
-int mn_server_recv_db(struct mn_ClientOBJ *obj, struct mn_data_block **blocks, void **block_data, size_t *block_amount) {
+int mn_server_recv_db(struct mn_ClientOBJ *obj, struct mn_data_block **blocks, size_t *recv_block_count,
+                      size_t max_blocks, size_t max_size) {
 
-    mn_func_set                     "mn_server_send_db";
+    mn_func_set                     "mn_server_recv_db";
+
+    if (blocks == NULL | recv_block_count == NULL | obj == NULL)
+                                    mn_err_ret("NULL Function Ptr Params");
 
     mn_byte recv_db_header[8];
 
     if (mn_server_recv_exact(obj, recv_db_header, 8))
                                     mn_ERR_ret("Recv Exact Error");
 
+    size_t block_limit = max_blocks ? max_blocks : mn_data_block_count_limit;
+    size_t size_limit  = max_size ? max_size : mn_data_block_size_limit;
+    
 
     uint16_t data_block_header      = htons(mn_data_block_header);
 
@@ -243,33 +250,28 @@ int mn_server_recv_db(struct mn_ClientOBJ *obj, struct mn_data_block **blocks, v
     uint32_t raw_payload_size       = ntohl(*(uint32_t*)(recv_db_header+4));
 
 
-    if (raw_payload_size > mn_data_block_size_limit)
+    if (raw_payload_size > size_limit)
                                     mn_err_ret("Data Block Payload Too Big");
 
-    if (block_count > mn_data_block_count_limit)
+    if (block_count > block_limit)
                                     mn_err_ret("Too many data blocks");
 
     if (block_count == 0)           mn_err_ret("Zero Blocks detected");
 
-    mn_mem_init(2);
+    if (raw_payload_size == 0)      mn_err_ret("Payload size is zero");
+
+    mn_mem_init(1);
 
     size_t payload_data_size        = raw_payload_size - (block_count*3);
 
-    mn_byte *payload_data           = malloc(payload_data_size);
+    void *blocks_data               = malloc(block_count*sizeof(struct mn_data_block) + payload_data_size);
 
-    if (payload_data == NULL)        mn_ERR_ret("Malloc Failure");
+    if (blocks_data == NULL)        mn_ERR_ret("Malloc Failure");
 
-    mn_mem_add(payload_data);
+    mn_mem_add(blocks_data);
 
 
-    struct mn_data_block *data_blocks
-                                    = malloc(block_count*sizeof(struct mn_data_block));
-
-    if (data_blocks == NULL)        mn_mem_ERR_free("Malloc Fail");
-
-    mn_mem_add(data_blocks);
-
-    size_t pd_offset = 0;
+    size_t pd_offset = block_count*sizeof(struct mn_data_block);
 
     for (int i = 0; i < block_count; i++) {
         
@@ -285,11 +287,11 @@ int mn_server_recv_db(struct mn_ClientOBJ *obj, struct mn_data_block **blocks, v
         uint16_t data_len           = ntohs(*(uint16_t*)(block_header+1));
 
 
-        struct mn_data_block block  = (mn_db) {type, (type_header & 0x80) ? 1 : 0, data_len/type, payload_data + pd_offset};
+        struct mn_data_block block  = (mn_db) {type, (type_header & 0x80) ? 1 : 0, data_len/type, blocks_data + pd_offset};
 
         if (type == mn_s8) {
 
-            if (mn_server_recv_exact(obj, payload_data + pd_offset, data_len))
+            if (mn_server_recv_exact(obj, blocks_data + pd_offset, data_len))
                                     mn_mem_ERR_free("Recv Exact Error");
 
         } else if (type == mn_s16) {
@@ -303,7 +305,7 @@ int mn_server_recv_db(struct mn_ClientOBJ *obj, struct mn_data_block **blocks, v
 
                 data                = ntohs(data);
 
-                memcpy(payload_data + pd_offset + j, &data, mn_s16);
+                memcpy(blocks_data + pd_offset + j, &data, mn_s16);
             
             }
 
@@ -318,23 +320,22 @@ int mn_server_recv_db(struct mn_ClientOBJ *obj, struct mn_data_block **blocks, v
 
                 data                = ntohl(data);
 
-                memcpy(payload_data + pd_offset + j, &data, mn_s32);
+                memcpy(blocks_data + pd_offset + j, &data, mn_s32);
             
             }
 
         }
 
-        memcpy(data_blocks+i, &block, sizeof(struct mn_data_block));
+        memcpy(((struct mn_data_block*)blocks_data)+i, &block, sizeof(struct mn_data_block));
 
         pd_offset                   += data_len;
 
     }
 
-    *block_data                     = payload_data;
 
-    *blocks                         = data_blocks;
+    *blocks                         = blocks_data;
 
-    *block_amount                   = block_count;
+    *recv_block_count             = block_count;
 
     return 0;
 
@@ -590,20 +591,27 @@ int mn_client_recv_exact(struct mn_ClientCTX *ctx, unsigned char *buff, size_t n
     return 0;
 }
 
-int mn_client_recv_db(struct mn_ClientCTX *ctx, struct mn_data_block **blocks, void **block_data, size_t *block_amount) {
+int mn_client_recv_db(struct mn_ClientCTX *ctx, struct mn_data_block **blocks, size_t *recv_block_count,
+size_t max_blocks, size_t max_size) {
 
-    mn_func_set                     "mn_server_send_db";
+    mn_func_set                     "mn_client_recv_db";
+
+    if (blocks == NULL | recv_block_count == NULL | ctx == NULL)
+                  mn_err_ret("NULL Function Ptr Params");
 
     mn_byte recv_db_header[8];
 
     if (mn_client_recv_exact(ctx, recv_db_header, 8))
-                                    mn_ERR_ret("Recv Exact Error");
+                  mn_ERR_ret("Recv Exact Error");
+
+    size_t block_limit = max_blocks ? max_blocks : mn_data_block_count_limit;
+    size_t size_limit  = max_size ? max_size : mn_data_block_size_limit;
 
 
     uint16_t data_block_header      = htons(mn_data_block_header);
 
     if (memcmp(recv_db_header, &data_block_header, 2) != 0)
-                                    mn_err_ret("Received data not DB Header");
+                  mn_err_ret("Received data not DB Header");
 
 
     uint16_t block_count            = ntohs(*(uint16_t*)(recv_db_header+2));
@@ -611,36 +619,31 @@ int mn_client_recv_db(struct mn_ClientCTX *ctx, struct mn_data_block **blocks, v
     uint32_t raw_payload_size       = ntohl(*(uint32_t*)(recv_db_header+4));
 
 
-    if (raw_payload_size > mn_data_block_size_limit)
-                                    mn_err_ret("Data Block Payload Too Big");
+    if (raw_payload_size > size_limit)
+                  mn_err_ret("Data Block Payload Too Big");
 
-    if (block_count > mn_data_block_count_limit)
-                                    mn_err_ret("Too many data blocks");
+    if (block_count > block_limit)
+                  mn_err_ret("Too many data blocks");
 
     if (block_count == 0)           mn_err_ret("Zero Blocks detected");
 
-    mn_mem_init(2);
+    if (raw_payload_size == 0)      mn_err_ret("Payload size is zero");
+
+    mn_mem_init(1);
 
     size_t payload_data_size        = raw_payload_size - (block_count*3);
 
-    mn_byte *payload_data           = malloc(payload_data_size);
+    void *blocks_data               = malloc(block_count*sizeof(struct mn_data_block) + payload_data_size);
 
-    if (payload_data == NULL)        mn_ERR_ret("Malloc Failure");
+    if (blocks_data == NULL)        mn_ERR_ret("Malloc Failure");
 
-    mn_mem_add(payload_data);
+    mn_mem_add(blocks_data);
 
 
-    struct mn_data_block *data_blocks
-                                    = malloc(block_count*sizeof(struct mn_data_block));
-
-    if (data_blocks == NULL)        mn_mem_ERR_free("Malloc Fail");
-
-    mn_mem_add(data_blocks);
-
-    size_t pd_offset = 0;
+    size_t pd_offset = block_count*sizeof(struct mn_data_block);
 
     for (int i = 0; i < block_count; i++) {
-        
+
         mn_byte block_header[3];
 
         if (mn_client_recv_exact(ctx, block_header, 3))
@@ -653,17 +656,17 @@ int mn_client_recv_db(struct mn_ClientCTX *ctx, struct mn_data_block **blocks, v
         uint16_t data_len           = ntohs(*(uint16_t*)(block_header+1));
 
 
-        struct mn_data_block block  = (mn_db) {type, (type_header & 0x80) ? 1 : 0, data_len/type, payload_data + pd_offset};
+        struct mn_data_block block  = (mn_db) {type, (type_header & 0x80) ? 1 : 0, data_len/type, blocks_data + pd_offset};
 
         if (type == mn_s8) {
 
-            if (mn_client_recv_exact(ctx, payload_data + pd_offset, data_len))
+            if (mn_client_recv_exact(ctx, blocks_data + pd_offset, data_len))
                                     mn_mem_ERR_free("Recv Exact Error");
 
         } else if (type == mn_s16) {
-            
+
             for (int j = 0; j < data_len; j+=mn_s16) {
-                
+
                 uint16_t data;
 
                 if (mn_client_recv_exact(ctx, (mn_byte *)&data, mn_s16))
@@ -671,14 +674,15 @@ int mn_client_recv_db(struct mn_ClientCTX *ctx, struct mn_data_block **blocks, v
 
                 data                = ntohs(data);
 
-                memcpy(payload_data + pd_offset + j, &data, mn_s16);
-            
+                memcpy(blocks_data + pd_offset + j, &data, mn_s16);
+
             }
+
 
         } else if (type == mn_s32) {
 
             for (int j = 0; j < data_len; j+=mn_s32) {
-                
+
                 uint32_t data;
 
                 if (mn_client_recv_exact(ctx, (mn_byte *)&data, mn_s32))
@@ -686,23 +690,22 @@ int mn_client_recv_db(struct mn_ClientCTX *ctx, struct mn_data_block **blocks, v
 
                 data                = ntohl(data);
 
-                memcpy(payload_data + pd_offset + j, &data, mn_s32);
-            
+                memcpy(blocks_data + pd_offset + j, &data, mn_s32);
+
             }
 
         }
 
-        memcpy(data_blocks+i, &block, sizeof(struct mn_data_block));
+        memcpy(((struct mn_data_block*)blocks_data)+i, &block, sizeof(struct mn_data_block));
 
         pd_offset                   += data_len;
 
     }
 
-    *block_data                     = payload_data;
 
-    *blocks                         = data_blocks;
+    *blocks                         = blocks_data;
 
-    *block_amount                   = block_count;
+    *recv_block_count               = block_count;
 
     return 0;
 
